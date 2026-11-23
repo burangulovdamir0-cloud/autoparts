@@ -10,7 +10,6 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
-# --- 1. ПОКАЗ ФОРМЫ (GET) ---
 @parts_bp.route("/parts/add", methods=["GET"])
 def add_part_form():
     conn = get_db()
@@ -18,7 +17,6 @@ def add_part_form():
     categories = conn.execute("SELECT id, name FROM categories ORDER BY name").fetchall()
     conn.close()
     return render_template("add_part.html", brands=brands, categories=categories)
-
 
 @parts_bp.route("/parts/add", methods=["POST"])
 def add_part():
@@ -38,7 +36,7 @@ def add_part():
 
     try:
         price = float(price_raw.replace(",", "."))
-        if price < 0:
+        if price < 0: 
             errors.append("Цена должна быть больше нуля.")
     except ValueError:
         price = None
@@ -63,7 +61,7 @@ def add_part():
             (article, name, brand_id, category_id, price, stock, description),
         )
         conn.commit()
-        flash("Запчасть добавлен в каталог.", "success")
+        flash("Запчасть добавлен в каталог.", "success") 
     except sqlite3.IntegrityError:
         flash("Запчасть с таким артикулом уже существует.", "error")
     finally:
@@ -71,24 +69,45 @@ def add_part():
 
     return redirect(url_for("parts.catalog"))
 
-
 @parts_bp.route("/catalog")
 def catalog():
+    search_query = request.args.get("search", "").strip()
+    brand_filter = request.args.get("brand_id", "").strip()
+    
     conn = get_db()
-    parts = conn.execute("""
+    
+    query = """
         SELECT p.*, b.name as brand_name, c.name as category_name 
         FROM parts p
         JOIN brands b ON p.brand_id = b.id
         JOIN categories c ON p.category_id = c.id
-        ORDER BY p.id DESC
-    """).fetchall()
+        WHERE 1=1
+    """
+    params = []
+    
+    if search_query:
+        query += " AND (p.name LIKE ? OR p.article LIKE ?)"
+        params.extend([f"%{search_query}%", f"%{search_query}%"])
+        
+    if brand_filter:
+        query += " AND p.brand_id = ?"
+        params.append(brand_filter)
+        
+    query += " ORDER BY p.id DESC"
+    
+    parts = conn.execute(query, params).fetchall()
+    brands = conn.execute("SELECT id, name FROM brands ORDER BY name").fetchall()
+    
+    total_value = sum(p['price'] * p['stock'] for p in parts)
+    
     conn.close()
-    return render_template("catalog.html", parts=parts)
-
+    return render_template("catalog.html", parts=parts, brands=brands, total_value=total_value, search_query=search_query, brand_filter=brand_filter)
 
 @parts_bp.route("/dashboard")
 def dashboard(): return "<h2>Дашборд директора</h2><a href='/catalog'>Вернуться в каталог</a>"
+
 @parts_bp.route("/directory")
 def directory(): return "<h2>Справочник</h2><a href='/catalog'>Вернуться в каталог</a>"
+
 @parts_bp.route("/cart")
 def cart(): return "<h2>Корзина</h2><a href='/catalog'>Вернуться в каталог</a>"

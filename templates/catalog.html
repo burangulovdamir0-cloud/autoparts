@@ -5,20 +5,42 @@
     <title>Каталог запчастей</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f4f4f9; margin: 0; }
+        
+        
         .navbar { background: #2c3e50; padding: 15px 30px; display: flex; gap: 20px; }
-        .navbar a { color: white; text-decoration: none; }
-        .container { max-width: 900px; margin: 30px auto; background: white; padding: 20px; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #ecf0f1; }
-        .btn { background: #3498db; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block; margin-bottom: 15px; }
+        .navbar a { color: white; text-decoration: none; font-weight: bold; }
+        .navbar a:hover { text-decoration: underline; }
+        
+       
+        .container { max-width: 1000px; margin: 30px auto; background: white; padding: 20px; border-radius: 8px; border: 1px solid #ddd; }
+        
+      
+        .search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .search-bar input, .search-bar select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .search-bar input { flex: 1; }
+        .search-bar button { padding: 8px 15px; background: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        
+       
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 20px; }
+        .card { border: 1px solid #ccc; padding: 15px; border-radius: 4px; background: #fff; }
+        .card h3 { margin: 0 0 10px 0; font-size: 16px; color: #333; }
+        .card p { margin: 5px 0; font-size: 14px; color: #555; }
+        .price { font-weight: bold; color: #000; font-size: 18px; margin-top: 10px !important; }
+        
+     
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-top: 10px; }
+        .bg-danger { background: #f8d7da; color: #721c24; }
+        .bg-success { background: #d4edda; color: #155724; }
+        
         .alert { padding: 10px; margin-bottom: 20px; border-radius: 4px; background: #d4edda; color: #155724; }
+        .btn-add { background: #3498db; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; display: inline-block; margin-bottom: 15px; }
+        .total-info { font-weight: bold; margin-bottom: 15px; }
     </style>
 </head>
 <body>
     <div class="navbar">
         <a href="/dashboard">Дашборд директора</a>
-        <a href="/catalog" style="font-weight: bold;">Каталог</a>
+        <a href="/catalog">Каталог</a>
         <a href="/directory">Справочник</a>
         <a href="/cart">Корзина</a>
     </div>
@@ -34,36 +56,43 @@
           {% endif %}
         {% endwith %}
 
-        <a href="/parts/add" class="btn">+ Добавить запчасть</a>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Артикул</th>
-                    <th>Наименование</th>
-                    <th>Бренд</th>
-                    <th>Категория</th>
-                    <th>Цена</th>
-                    <th>Остаток</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in parts %}
-                <tr>
-                    <td>{{ p.article }}</td>
-                    <td>{{ p.name }}</td>
-                    <td>{{ p.brand_name }}</td>
-                    <td>{{ p.category_name }}</td>
-                    <td>{{ p.price }} ₽</td>
-                    <td>{{ p.stock }} шт.</td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="6" style="text-align: center;">В каталоге пока нет запчастей. Добавьте первую!</td>
-                </tr>
+        
+        <form method="GET" action="/catalog" class="search-bar">
+            <input type="text" name="search" placeholder="Поиск по названию или артикулу..." value="{{ search_query or '' }}">
+            <select name="brand_id">
+                <option value="">Все бренды</option>
+                {% for b in brands %}
+                    <option value="{{ b.id }}">{{ b.name }}</option>
                 {% endfor %}
-            </tbody>
-        </table>
+            </select>
+            <button type="submit">Найти</button>
+        </form>
+
+        <p class="total-info">Общая стоимость остатков: {{ total_value }} ₽</p>
+        <a href="/parts/add" class="btn-add">+ Добавить запчасть</a>
+
+        <div class="grid">
+            {% for p in parts %}
+            <div class="card">
+                <h3>{{ p.brand_name }} {{ p.name }}</h3>
+                <p>Артикул: {{ p.article }}</p>
+                <p>Категория: {{ p.category_name }}</p>
+                <p class="price">{{ p.price }} ₽</p>
+                
+                {% if p.stock == 0 %}
+                    <span class="badge bg-danger">Нет в наличии</span>
+                {% elif p.stock < 5 %}
+                    <span class="badge bg-danger">Мало ({{ p.stock }} шт.)</span>
+                {% else %}
+                    <span class="badge bg-success">В наличии: {{ p.stock }} шт.</span>
+                {% endif %}
+            </div>
+            {% else %}
+            <div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #777;">
+                В каталоге пока нет запчастей или ничего не найдено.
+            </div>
+            {% endfor %}
+        </div>
     </div>
 </body>
 </html>
